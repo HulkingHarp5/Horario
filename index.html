@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Schedule Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030712;
+            --surface: #111827;
+            --accent: #38bdf8;
+            --secondary: #818cf8;
+            --text: #f9fafb;
+            --text-muted: #9ca3af;
+            --border: rgba(255, 255, 255, 0.08);
+            --input-bg: #1f2937;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container { width: 100%; max-width: 900px; }
+
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 { margin: 0; font-size: 1.8rem; background: linear-gradient(90deg, var(--accent), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .main-controls { display: flex; gap: 10px; }
+        
+        .btn-icon {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            transition: 0.3s;
+        }
+
+        .btn-icon:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
+        .btn-icon.active { background: var(--accent); color: var(--bg); font-weight: 600; }
+
+        #filter-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--surface);
+            border-radius: 20px;
+            opacity: 0;
+        }
+
+        #filter-panel.open {
+            max-height: 500px;
+            margin-bottom: 30px;
+            padding: 20px;
+            opacity: 1;
+            border: 1px solid var(--border);
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 0.7rem; color: var(--accent); font-weight: 600; text-transform: uppercase; }
+        
+        input {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        #timeline-view, #table-view { display: none; width: 100%; }
+        .active-view { display: block !important; }
+
+        .table-wrapper { overflow-x: auto; background: var(--surface); border-radius: 20px; border: 1px solid var(--border); padding: 10px; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; table-layout: fixed; }
+        th { color: var(--accent); padding: 15px; font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid var(--border); }
+        td { padding: 8px; border: 1px solid var(--border); height: 70px; vertical-align: middle; text-align: center; overflow: hidden; }
+        
+        .table-class-box { 
+            background: rgba(56, 189, 248, 0.1); 
+            color: var(--accent); 
+            padding: 6px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            border-left: 3px solid var(--accent);
+            font-size: 0.65rem;
+            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .day-selector { display: flex; gap: 8px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 5px; }
+        .day-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 10px; cursor: pointer; white-space: nowrap; transition: 0.3s; }
+        .day-btn.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+
+        .class-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.3s;
+        }
+        .class-card:hover { border-color: var(--accent); transform: scale(1.01); }
+
+        .class-card-info h3 { margin: 0; font-size: 1.1rem; color: var(--accent); }
+        .class-card-info p { margin: 5px 0 0; color: var(--text-muted); font-size: 0.9rem; }
+        .class-card-meta { text-align: right; }
+        .tag-room { background: var(--input-bg); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; color: var(--text); border: 1px solid var(--border); }
+
+        @media (max-width: 600px) {
+            .class-card { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .class-card-meta { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Horario Académico</h1>
+                <p id="current-date-info" style="color: var(--text-muted); margin: 0; font-size: 0.9rem;"></p>
+            </div>
+            <div class="main-controls">
+                <button class="btn-icon" onclick="toggleFilters()" id="btn-filter-toggle">🔍 <span>Filtros</span></button>
+                <button class="btn-icon active" onclick="switchView('timeline')" id="btn-view-timeline">📅 <span>Día</span></button>
+                <button class="btn-icon" onclick="switchView('table')" id="btn-view-table">📊 <span>Semana</span></button>
+            </div>
+        </div>
+
+        <div id="filter-panel">
+            <div class="search-grid">
+                <div class="filter-group">
+                    <label>Materia</label>
+                    <input type="text" id="f-subject" placeholder="Ej: Interfaces" oninput="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label>Profesor</label>
+                    <input type="text" id="f-prof" placeholder="Ej: Gustavo" oninput="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label>Búsqueda Rápida (Sec/Edif)</label>
+                    <input type="text" id="f-extra" placeholder="4NM42 o Ing." oninput="applyFilters()">
+                </div>
+            </div>
+        </div>
+
+        <div id="timeline-view" class="active-view">
+            <div class="day-selector">
+                <button class="day-btn" onclick="setDay('Lunes')">Lunes</button>
+                <button class="day-btn" onclick="setDay('Martes')">Martes</button>
+                <button class="day-btn" onclick="setDay('Miércoles')">Miércoles</button>
+                <button class="day-btn" onclick="setDay('Jueves')">Jueves</button>
+                <button class="day-btn" onclick="setDay('Viernes')">Viernes</button>
+            </div>
+            <div id="timeline-content"></div>
+        </div>
+
+        <div id="table-view">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Hora</th>
+                            <th>Lun</th><th>Mar</th><th>Mie</th><th>Jue</th><th>Vie</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const data = [
+            { day: "Miércoles", start: "14:00", end: "16:00", subject: "DISEÑO DE INTERFACES DE USUARIO", sec: "3NV30", prof: "MARTINEZ VAZQUEZ GUSTAVO", room: "S-Docente", bld: "Culturales" },
+            { day: "Jueves", start: "14:00", end: "15:00", subject: "DISEÑO DE INTERFACES DE USUARIO", sec: "3NV30", prof: "MARTINEZ VAZQUEZ GUSTAVO", room: "202", bld: "Ing." },
+            { day: "Miércoles", start: "07:00", end: "09:00", subject: "SEGURIDAD INFORMÁTICA", sec: "4NM41", prof: "SANDOVAL GONZALEZ VICTOR L.", room: "114", bld: "Ing." },
+            { day: "Viernes", start: "07:00", end: "09:00", subject: "SEGURIDAD INFORMÁTICA", sec: "4NM41", prof: "SANDOVAL GONZALEZ VICTOR L.", room: "114", bld: "Ing." },
+            { day: "Lunes", start: "11:00", end: "13:00", subject: "ESTADÍSTICA", sec: "4NM42", prof: "RIOS SURIANO FRANCISCO JAVIER", room: "307", bld: "Básicas" },
+            { day: "Miércoles", start: "11:00", end: "13:00", subject: "ESTADÍSTICA", sec: "4NM42", prof: "RIOS SURIANO FRANCISCO JAVIER", room: "112", bld: "Básicas" },
+            { day: "Lunes", start: "10:00", end: "11:00", subject: "DISPOSITIVOS PROGRAMABLES", sec: "4NM42", prof: "MORALES CASTILLO VICTOR", room: "LE-05", bld: "Pesados" },
+            { day: "Viernes", start: "10:00", end: "13:00", subject: "DISPOSITIVOS PROGRAMABLES", sec: "4NM42", prof: "MORALES CASTILLO VICTOR", room: "LE-05", bld: "Pesados" },
+            { day: "Martes", start: "09:00", end: "11:00", subject: "INGENIERÍA DE DISEÑO", sec: "4NM42", prof: "ORTIZ ALVAREZ MILDRED KARINA", room: "114", bld: "Ing." },
+            { day: "Jueves", start: "09:00", end: "11:00", subject: "INGENIERÍA DE DISEÑO", sec: "4NM42", prof: "ORTIZ ALVAREZ MILDRED KARINA", room: "104", bld: "Ing." },
+            { day: "Martes", start: "11:00", end: "13:00", subject: "SISTEMAS OPERATIVOS", sec: "4NM42", prof: "GOMEZ ARAGON LAURA ANGELICA", room: "307", bld: "Ing." },
+            { day: "Jueves", start: "11:00", end: "13:00", subject: "SISTEMAS OPERATIVOS", sec: "4NM42", prof: "GOMEZ ARAGON LAURA ANGELICA", room: "Sala-SUN", bld: "Pesados" },
+            { day: "Martes", start: "07:00", end: "09:00", subject: "ADQUISICIÓN DE DATOS", sec: "4NM43", prof: "CASILLAS RIVAS ALEJANDRO", room: "202", bld: "Ing." },
+            { day: "Jueves", start: "07:00", end: "09:00", subject: "ADQUISICIÓN DE DATOS", sec: "4NM43", prof: "CASILLAS RIVAS ALEJANDRO", room: "Computación", bld: "Ing." },
+            { day: "Martes", start: "16:00", end: "18:00", subject: "ADMINISTRACIÓN DE BASES DE DATOS", sec: "4NV40", prof: "CRUZ MARTINEZ RAMON", room: "Sala poniente", bld: "Ing." },
+            { day: "Viernes", start: "16:00", end: "18:00", subject: "ADMINISTRACIÓN DE BASES DE DATOS", sec: "4NV40", prof: "CRUZ MARTINEZ RAMON", room: "Sala Poniente", bld: "Ing." }
+        ];
+
+        let activeDay = 'Lunes';
+
+        function toggleFilters() { document.getElementById('filter-panel').classList.toggle('open'); }
+
+        function switchView(view) {
+            document.getElementById('timeline-view').classList.toggle('active-view', view === 'timeline');
+            document.getElementById('table-view').classList.toggle('active-view', view === 'table');
+            document.getElementById('btn-view-timeline').classList.toggle('active', view === 'timeline');
+            document.getElementById('btn-view-table').classList.toggle('active', view === 'table');
+            if(view === 'table') renderTable(); else applyFilters();
+        }
+
+        function setDay(day) {
+            activeDay = day;
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.toggle('active', b.innerText === day));
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const fSub = document.getElementById('f-subject').value.toLowerCase();
+            const fProf = document.getElementById('f-prof').value.toLowerCase();
+            const fExtra = document.getElementById('f-extra').value.toLowerCase();
+
+            const filtered = data.filter(item => {
+                return item.day === activeDay && 
+                       item.subject.toLowerCase().includes(fSub) &&
+                       item.prof.toLowerCase().includes(fProf) &&
+                       (item.sec.toLowerCase().includes(fExtra) || item.bld.toLowerCase().includes(fExtra));
+            }).sort((a,b) => a.start.localeCompare(b.start));
+
+            renderTimeline(filtered);
+        }
+
+        function renderTimeline(items) {
+            const container = document.getElementById('timeline-content');
+            container.innerHTML = items.length ? '' : '<p style="text-align:center; opacity:0.5; padding:40px;">No hay clases hoy o con estos filtros.</p>';
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'class-card';
+                card.innerHTML = `
+                    <div class="class-card-info">
+                        <h3>${item.subject}</h3>
+                        <p>👨‍🏫 ${item.prof}</p>
+                        <p style="font-size:0.8rem">🏷️ Secuencia: ${item.sec}</p>
+                    </div>
+                    <div class="class-card-meta">
+                        <div style="font-weight:600; color:var(--accent); margin-bottom:8px;">${item.start} - ${item.end}</div>
+                        <span class="tag-room">📍 ${item.bld} | ${item.room}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            const hours = ["07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+            const daysMap = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+            hours.forEach(hour => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td style="color:var(--text-muted); font-weight:600; font-size:0.8rem;">${hour}</td>`;
+                daysMap.forEach(day => {
+                    const c = data.find(x => x.day === day && hour >= x.start && hour < x.end);
+                    tr.innerHTML += `<td>${c ? `<div class="table-class-box">${c.subject}</div>` : ''}</td>`;
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+            const now = new Date();
+            const todayIndex = now.getDay();
+            const todayName = days[todayIndex];
+            const dateStr = now.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+            document.getElementById('current-date-info').innerText = "Hoy es " + dateStr;
+            if (todayIndex === 0 || todayIndex === 6) setDay('Lunes');
+            else setDay(todayName);
+        });
+    </script>
+</body>
+</html>
